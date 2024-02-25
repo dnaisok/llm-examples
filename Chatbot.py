@@ -1,5 +1,8 @@
-from openai import OpenAI
+import requests
 import streamlit as st
+
+# 定义自定义请求地址
+custom_api_url = "https://one.789ai.top"
 
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
@@ -20,10 +23,24 @@ if prompt := st.chat_input():
         st.info("Please add your OpenAI API key to continue.")
         st.stop()
 
-    client = OpenAI(api_key=openai_api_key)
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-    response = client.chat.completions.create(model="gpt-3.5-turbo", messages=st.session_state.messages)
-    msg = response.choices[0].message.content
-    st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.chat_message("assistant").write(msg)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {openai_api_key}"
+    }
+
+    payload = {
+        "model": "gpt-3.5-turbo",
+        "messages": st.session_state.messages
+    }
+
+    # 发送POST请求到自定义的API地址
+    response = requests.post(custom_api_url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        msg = response.json()["choices"][0]["message"]["content"]
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+        st.session_state.messages.append({"role": "assistant", "content": msg})
+        st.chat_message("assistant").write(msg)
+    else:
+        st.error(f"Error: {response.text}")
